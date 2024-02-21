@@ -1,60 +1,180 @@
-# my_token_project
+# ICP TOKEN CREATION
 
-Welcome to your new my_token_project project and to the internet computer development community. By default, creating a new project adds this README and some template files to your project directory. You can edit these template files to customize your project and to include your own code to speed up the development cycle.
+## Introduction 
+The standard for creating tokens on Internet Computer is called ```ICRC-1 token standard``` 
 
-To get started, you might want to explore the project directory structure and the default configuration file. Working with this project in your development environment will not affect any production deployment or identity tokens.
+``ICRC``: means Internet Computer Request Comments 
 
-To learn more before you start working with my_token_project, see the following documentation available online:
+The ``ICRC-1 Standard`` defines a universally accepted standard for creating and recording token transactions on Internet Computer Protocol 
 
-- [Quick Start](https://internetcomputer.org/docs/current/developer-docs/quickstart/hello10mins)
-- [SDK Developer Tools](https://internetcomputer.org/docs/current/developer-docs/build/install-upgrade-remove)
-- [Motoko Programming Language Guide](https://internetcomputer.org/docs/current/developer-docs/build/cdks/motoko-dfinity/motoko/)
-- [Motoko Language Quick Reference](https://internetcomputer.org/docs/current/references/motoko-ref/)
-- [JavaScript API Reference](https://erxue-5aaaa-aaaab-qaagq-cai.raw.icp0.io)
+Tokens that are to be/created are to fullfil all requirements that are in the standard 
 
-If you want to start working on your project right away, you might want to try the following commands:
+You can check the detailed account of the standard [here](https://github.com/dfinity/ICRC-1/tree/main/standards/ICRC-1)
 
-```bash
-cd my_token_project/
-dfx help
-dfx canister --help
+## Using ICP Ledger
+ICP Ledger is a canister that is used for interacting with the ICP Token i.e sending to another account, converting it to cycles 
+
+Deploying a local ICP Ledger is very important as your local replica cannot access the mainnet ICP ledger
+
+#### Note: The ICP Ledger can only be used to interact with ICP Token, in order to interact with other tokens i.e ICRC Tokens, you will need an ICRC Ledger, which we'll be coverning in this tutorial 
+
+Main difference between ICP Ledger and ICRC-1 Ledger is the implementation of accounts: 
+* ICRC-1 specifies ``account`` which is a struct that contains a ``principal`` and optional `subaccount`
+* On the other hand, ICP Ledger uses ``AccountIdentifier`` which is a hash of the ICRC-1 value 
+
+## Deploying ICRC-1 Ledger Locally: 
+You will need to download the wasm and candid files for the ICRC-1 standard 
+
+These are the URLs you will use: 
+* Wasm module: https://download.dfinity.systems/ic/d87954601e4b22972899e9957e800406a0a6b929/canisters/ic-icrc1-ledger.wasm.gz 
+
+* Candid file: https://raw.githubusercontent.com/dfinity/ic/d87954601e4b22972899e9957e800406a0a6b929/rs/rosetta-api/icrc1/ledger/ledger.did 
+
+## Step 1: Installing dependencies
+Run the commands: 
+```
+dfx new my_token_project
+``` 
+
+```
+cd my_token_project
+``` 
+
+## Step 2: Confuguring your dfx.json file
+Open your dfx json and replace the existing content with: 
+```
+{
+  "canisters": {
+    "my_token_project": {
+      "type": "custom",
+      "candid": "https://raw.githubusercontent.com/dfinity/ic/d87954601e4b22972899e9957e800406a0a6b929/rs/rosetta-api/icrc1/ledger/ledger.did",
+      "wasm": "https://download.dfinity.systems/ic/d87954601e4b22972899e9957e800406a0a6b929/canisters/ic-icrc1-ledger.wasm.gz",
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
 ```
 
-## Running the project locally
+Note that we've completely removed the frontend configuration and also changed the backend configuration. 
 
-If you want to test your project locally, you can use the following commands:
+For the backend configuration, the ``type`` has been changed from ``motoko`` to ``custom``, since we're not using motoko language to create the token 
 
-```bash
-# Starts the replica, running in the background
-dfx start --background
+We've also added a ``candid`` and ``wasm`` urls for the modules, since these will be using the pre-configured modules to create our token 
 
-# Deploys your canisters to the replica and generates your candid interface
-dfx deploy
+## Step 3: Creating a minter identity
+In order for us to interact with the token, we'll create a new identity that will act as the ``minting`` account. We will then export the the account's ID to be used as the environment variable for ``MINTER``
+
+For those that don't remember, identity is like the authentication service for internet computer
+
+First before creating the identity you'll check out the identities that you currently have using the command 
+
+```
+dfx identity list
 ```
 
-Once the job completes, your application will be available at `http://localhost:4943?canisterId={asset_canister_id}`.
+This will print a list of all identities that you currently have. Once you've seen the identities you have and verified you don't have an identity called  ``minter`` you can now proceed to create one using the command below: 
 
-If you have made changes to your backend canister, you can generate a new candid interface with
+```
+dfx identity new minter 
 
-```bash
-npm run generate
+dfx identity use minter 
+
+export MINTER=$(dfx identity get-principal)
 ```
 
-at any time. This is recommended before starting the frontend development server, and will be run automatically any time you run `dfx deploy`.
+Transfer from the minting account will make a ``Mint`` transaction, while transfer to the minting account will make a  ``Burn`` transaction 
 
-If you are making frontend changes, you can start a development server with
+## Step 4: Exporting the name and symbol of your token 
+You can do that using the commands below 
 
-```bash
-npm start
+```
+export TOKEN_NAME="My First IC Token" 
+export TOKEN_SYMBOL="MFICT" 
 ```
 
-Which will start a server at `http://localhost:8080`, proxying API requests to the replica at port 4943.
+These are the environment variables that will be used for token creation 
 
-### Note on frontend environment variables
+## Step 5: Set the identity that you'll use to deploy the ledger 
+We will use the default ``DevJourney`` identity 
 
-If you are hosting frontend code somewhere without using DFX, you may need to make one of the following adjustments to ensure your project does not fetch the root key in production:
+```
+dfx identity use DevJourney 
+export DEPLOY_ID=$(dfx identity get-principal)
+```
 
-- set`DFX_NETWORK` to `ic` if you are using Webpack
-- use your own preferred method to replace `process.env.DFX_NETWORK` in the autogenerated declarations
-  - Setting `canisters -> {asset_canister_id} -> declarations -> env_override to a string` in `dfx.json` will replace `process.env.DFX_NETWORK` with the string in the autogenerated declarations
-- Write your own `createActor` constructor
+## Step 6: Set the amount of pre-minted tokens that you'll mint when deploying the ledger and the transfer fees 
+Use the command below: 
+
+```
+export PRE_MINTED_TOKENS=10_000_000_000
+export TRANSFER_FEE=10_000
+```
+
+## Step 7: Set the values for the ledger's archiving options
+Use the following commands: 
+
+```
+dfx identity new archive_controller 
+dfx identity use archive_controller 
+
+export ARCHIVE_CONTROLLER=$(dfx identity get-principal)
+export TRIGGER_THRESHOLD=2000 
+export NUM_OF_BLOCK_TO_ARCHIVE=1000 
+export CYCLE_FOR_ARCHIVE_CREATION=10000000000000 
+
+```
+
+Here are the uses of the above variables: 
+* ``TRIGGER_THRESHOLD``: number of blocks that will be archived once the trigger threshold is achieved 
+* ``NUM_OF_BLOCK_TO_ARCHIVE``: The amount of blocks to be archived 
+* ``CYCLE_FOR_ARCHIVE_CREATION``: amount of cycles to be sent to the archive canister when it is deployed 
+
+
+## Step 8: Specify which standards you want your ledger to support: 
+
+```
+export FEATURE_FLAGS=true 
+``` 
+
+If you set this to true it will support ICRC-2 standard extension, but if it is set to false it will only support ICRC-1 standard 
+
+## Step 9: Deploy the ICRC-1 Ledger canister locally: 
+
+You will use this command: 
+
+```
+dfx deploy my_token_project --argument "(variant {Init = 
+record {
+     token_symbol = \"${TOKEN_SYMBOL}\";
+     token_name = \"${TOKEN_NAME}\";
+     minting_account = record { owner = principal \"${MINTER}\" };
+     transfer_fee = ${TRANSFER_FEE};
+     metadata = vec {};
+     feature_flags = opt record{icrc2 = ${FEATURE_FLAGS}};
+     initial_balances = vec { record { record { owner = principal \"${DEPLOY_ID}\"; }; ${PRE_MINTED_TOKENS}; }; };
+     archive_options = record {
+         num_blocks_to_archive = ${NUM_OF_BLOCK_TO_ARCHIVE};
+         trigger_threshold = ${TRIGGER_THRESHOLD};
+         controller_id = principal \"${ARCHIVE_CONTROLLER}\";
+         cycles_for_archive_creation = opt ${CYCLE_FOR_ARCHIVE_CREATION};
+     };
+ }
+})"
+```
+
+Once your ledger deploys succesfully this is the url you'll see: 
+```
+  my_token_project: http://127.0.0.1:4943/?canisterId=bd3sg-teaaa-aaaaa-qaaba-cai&id=bkyz2-fmaaa-aaaaa-qaaaq-cai
+```
+
+
+
+
+
